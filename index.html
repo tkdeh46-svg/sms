@@ -1,1 +1,16 @@
-github.com/tkdeh46-svg/sms/new/main?filename=index.html
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>문자 열기</title>
+<style>body{font-family:-apple-system,sans-serif;padding:32px 20px;text-align:center;color:#1B2024}a{display:inline-block;margin-top:18px;padding:14px 22px;background:#D9480F;color:#fff;border-radius:12px;text-decoration:none;font-weight:700;font-size:18px}</style>
+</head><body>
+<p id="msg">문자 앱을 여는 중이에요…</p>
+<a id="go" href="#">문자 앱 열기</a>
+<script>
+var p = new URLSearchParams(location.hash.slice(1));
+var to = (p.get("to") || "").replace(/\D/g, "");
+var url = "sms:" + to + "&body=" + encodeURIComponent(p.get("body") || "");
+history.replaceState(null, "", location.pathname);
+document.getElementById("go").href = url;
+if (to) location.href = url; else document.getElementById("msg").textContent = "받는 번호가 없어요.";
+</script>
+</body></html>
