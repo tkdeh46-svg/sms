@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         저스트컴 네이버 자동 마감
 // @description  예약수첩에서 연 스마트플레이스 일정 화면에서, 주소에 적힌 날짜를 자동으로 마감(예약받기 끄기)한다
-// @version      3
+// @version      4
 // @updateURL    https://tkdeh46-svg.github.io/sms/justcom.user.js
 // @downloadURL  https://tkdeh46-svg.github.io/sms/justcom.user.js
 // @match        https://partner.booking.naver.com/*
@@ -12,12 +12,13 @@
 (function () {
   "use strict";
 
-  // 예약수첩이 붙여 보내는 주소 끝: #jc-close=2026-10-22  (다시 열기는 #jc-open=2026-10-22)
+  const VERSION = "v4";
+  // 예약수첩이 붙여 보내는 주소 끝: #jc-close=2026-10-22 (마감) / #jc-open=… (다시 열기) / #jc-toggle=… (지금 상태의 반대로)
   // 휴대폰은 partner → m-partner 로 넘어가면서 # 뒤가 사라질 수 있어, 2분짜리 쿠키에도 적어 둔다.
   const COOKIE = "jc_target";
   const params = new URLSearchParams(location.hash.slice(1));
-  let target = params.get("jc-close") || params.get("jc-open");
-  let mode = params.get("jc-open") ? "open" : "close";
+  let target = params.get("jc-close") || params.get("jc-open") || params.get("jc-toggle");
+  let mode = params.get("jc-open") ? "open" : params.get("jc-toggle") ? "toggle" : "close";
   if (target) {
     document.cookie = `${COOKIE}=${mode}:${target}; max-age=120; path=/; domain=.booking.naver.com`;
     history.replaceState(null, "", location.pathname + location.search);
@@ -50,7 +51,7 @@
     }
     const colors = { ok: ["#E2F0E9", "#2F7A5F"], bad: ["#F8E4E5", "#B3263E"], info: ["#ECEAF0", "#1E1B26"] };
     const [bg, fg] = colors[kind] || colors.info;
-    b.style.background = bg; b.style.color = fg; b.textContent = text;
+    b.style.background = bg; b.style.color = fg; b.textContent = `${text}\n[자동 마감 ${VERSION}]`;
   }
 
   // ---------- 화면에서 찾기 (글자 기준이라 PC 화면·모바일 화면 모두) ----------
@@ -123,9 +124,11 @@
     await waitFor(() => !visible(p.titleEl) || null, 6000);
   }
 
-  // 결과: "changed" 바꿈 / "already" 이미 원하는 상태
+  // 결과: "changed" 바꿈 / "already" 이미 원하는 상태. wantOpen 이 null 이면 지금 상태의 반대로(전환)
   async function setSlot(slot, wantOpen) {
     const p = await openPanel(slot);
+    if (wantOpen === null) wantOpen = !p.sw.checked;
+    lastWantOpen = wantOpen;
     if (p.sw.checked === wantOpen) { await closePanel(p); return "already"; }
     (p.sw.closest("label") || p.sw).click();
     await waitFor(() => p.sw.checked === wantOpen || null, 3000);
@@ -144,14 +147,17 @@
     return open;
   }
 
+  let lastWantOpen = null;
   async function run(dateStr, how) {
     const [y, m, d] = dateStr.split("-").map(Number);
-    const label = `${m}/${d}`, wantOpen = how === "open";
-    banner(`${label} ${wantOpen ? "다시 열기" : "마감"} 중이에요… (1단계: 화면 기다리는 중)`, "info");
+    const label = `${m}/${d}`;
+    let wantOpen = how === "toggle" ? null : how === "open";
+    const doing = () => (wantOpen === null ? "전환" : wantOpen ? "다시 열기" : "마감");
+    banner(`${label} ${doing()} 중이에요… (1단계: 화면 기다리는 중)`, "info");
     if (!(await waitFor(() => headerEl(), 25000))) throw new Error("1단계: 일정 달력 화면이 안 보여요. 로그인했는지 확인해 주세요");
     await goToMonth(`${y}.${String(m).padStart(2, "0")}`);
     await sleep(700);
-    banner(`${label} ${wantOpen ? "다시 열기" : "마감"} 중이에요… (3단계: 날짜 찾는 중)`, "info");
+    banner(`${label} ${doing()} 중이에요… (3단계: 날짜 찾는 중)`, "info");
     const slots = await waitFor(() => { const s = slotsOfDay(d); return s.length ? s : null; }, 8000);
     if (!slots) throw new Error(`3단계: ${label} 날짜 칸을 찾지 못했어요`);
     clearTarget(); // 한 번만 실행되게 (새로고침해도 반복하지 않음)
@@ -159,8 +165,9 @@
     for (let i = 0; i < slots.length; i++) {
       const s = slotsOfDay(d)[i];
       if (!s) continue;
-      banner(`${label} ${wantOpen ? "다시 열기" : "마감"} 중이에요… (4단계: ${i + 1}/${slots.length}번째 회차)`, "info");
+      banner(`${label} ${doing()} 중이에요… (4단계: ${i + 1}/${slots.length}번째 회차)`, "info");
       results.push(await setSlot(s, wantOpen));
+      if (wantOpen === null) wantOpen = lastWantOpen; // 전환: 첫 회차 상태로 방향을 정하고 나머지 회차도 같은 방향으로
       await sleep(900);
     }
     if (results.length && results.every((r) => r === "already"))
