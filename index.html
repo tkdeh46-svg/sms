@@ -10,8 +10,11 @@
 var p = new URLSearchParams(location.hash.slice(1));
 history.replaceState(null, "", location.pathname);
 var msg = document.getElementById("msg"), go = document.getElementById("go"), alt = document.getElementById("alt");
-var ics = p.get("ics");
-if (ics) {
+var ics = p.get("ics"), target = p.get("go");
+if (target) {
+  if (/^(javascript|data|vbscript):/i.test(target)) { msg.textContent = "열 수 없는 주소예요."; go.hidden = true; }
+  else { go.href = target; go.textContent = "앱 열기"; msg.textContent = "앱을 여는 중이에요… 안 열리면 아래 버튼을 눌러주세요."; location.href = target; }
+} else if (ics) {
   go.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
   go.textContent = "캘린더에 알림 추가";
   alt.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(ics);
