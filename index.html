@@ -4,13 +4,24 @@
 <style>body{font-family:-apple-system,sans-serif;padding:32px 20px;text-align:center;color:#1B2024}a{display:inline-block;margin-top:18px;padding:14px 22px;background:#D9480F;color:#fff;border-radius:12px;text-decoration:none;font-weight:700;font-size:18px}</style>
 </head><body>
 <p id="msg">문자 앱을 여는 중이에요…</p>
-<a id="go" href="#">문자 앱 열기</a>
+<a id="go" href="#">문자 앱 열기</a><br>
+<a id="alt" href="#" hidden style="background:#5F6970">다른 방법으로 추가</a>
 <script>
 var p = new URLSearchParams(location.hash.slice(1));
-var to = (p.get("to") || "").replace(/\D/g, "");
-var url = "sms:" + to + "&body=" + encodeURIComponent(p.get("body") || "");
 history.replaceState(null, "", location.pathname);
-document.getElementById("go").href = url;
-if (to) location.href = url; else document.getElementById("msg").textContent = "받는 번호가 없어요.";
+var msg = document.getElementById("msg"), go = document.getElementById("go"), alt = document.getElementById("alt");
+var ics = p.get("ics");
+if (ics) {
+  go.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" }));
+  go.textContent = "캘린더에 알림 추가";
+  alt.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(ics);
+  alt.hidden = false;
+  msg.textContent = "아래 버튼을 눌러 캘린더에 추가하세요. 안 되면 '다른 방법으로 추가'를 눌러주세요.";
+} else {
+  var to = (p.get("to") || "").replace(/\D/g, "");
+  var url = "sms:" + to + "&body=" + encodeURIComponent(p.get("body") || "");
+  go.href = url;
+  if (to) location.href = url; else msg.textContent = "받는 번호가 없어요.";
+}
 </script>
 </body></html>
