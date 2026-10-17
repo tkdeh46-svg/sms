@@ -16,7 +16,8 @@ if (ics) {
   go.textContent = "캘린더에 알림 추가";
   alt.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(ics);
   alt.hidden = false;
-  msg.textContent = "아래 버튼을 눌러 캘린더에 추가하세요. 안 되면 '다른 방법으로 추가'를 눌러주세요.";
+  msg.textContent = "캘린더를 여는 중이에요… 안 열리면 아래 버튼을 눌러주세요.";
+  location.href = go.href;
 } else {
   var to = (p.get("to") || "").replace(/\D/g, "");
   var url = "sms:" + to + "&body=" + encodeURIComponent(p.get("body") || "");
